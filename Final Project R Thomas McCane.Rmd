@@ -1,0 +1,85 @@
+---
+title: "Final Project"
+output: html_document
+date: "2022-10-06"
+---
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+
+ggplot(Monkey_Pox_updated) + geom_point(mapping = aes(y = Confirmed_Cases, x = Hospitalized, color = Country)) + labs(title = "Confirmed Cases vs. Hospitalizations by Country") #graph that depicts each country in the data set and their number of confirmed cases visualized against the number of hospitalizations. Can see that for the most part there are very few hospitalizations, reagrdless of confirmed cases. However some countries that historically are not the best at disease management or maybe are less developed appear to have higher rates of hospitalization. 
+
+
+#Monkey_Pox_Updated data set was made from the original Monkey_Pox and Monkey_Pox_Symptoms datasets. I combed through each dataset finding each country I was going to use in both and then added symptoms and gender from the second dataset to the first. 
+
+sum(Monkey_Pox_updated$Confirmed_Cases) #total confirmed cases among selected countries is 49,988
+sum(Monkey_Pox_updated$Hospitalized) #total number of hospitalizations among all countries is 78
+
+
+
+#creating new column showing the ratio/percentage of cases that were hospitalized per country
+
+Monkey_Pox_updated$Hospitalized/Monkey_Pox_updated$Confirmed_Cases*100
+#The majority of countries boast 0% hospitalizations, and the ones with hospitalizations are of extremely low percentage. The two highest rates of hospitalization are in Greece (2.7%) and Bolivia (3.2%). Current Greek and Bolivian infrastructure is fragile, could be a factor. 
+
+#creating column of percentages above to eventually make a bar graph
+
+
+Monkey_Pox <- mutate(Monkey_Pox_updated,percent_hospitalized = Monkey_Pox_updated$Hospitalized/Monkey_Pox_updated$Confirmed_Cases*100)
+
+#bar graph to depict what percentage of confirmed cases in each nation were hospitalized
+
+Monkey_Pox_desc <- Monkey_Pox[order(-Monkey_Pox$percent_hospitalized),]
+barplot(Monkey_Pox_desc$percent_hospitalized, 
+        main = "Percent of MonkeyPox cases Hospitalized by Country",
+        xlab = "Country",
+        ylab = "Percent Hospitalized", 
+        names.arg = Monkey_Pox_desc$Country)
+
+#Linear Regression #1 to see if there is a relationship between specific symptoms and the percent of hospitalizations
+
+Monkey_Pox.regression <- lm(Travel_History_Yes~Hospitalized, data = Monkey_Pox)
+summary(Monkey_Pox.regression)
+
+# p value of .009 shows a strong relationship (very high statistical significance) between hospitalizations and previous travel history
+
+
+plot(Monkey_Pox$Hospitalized, Monkey_Pox$Travel_History_Yes, xlab = "Hospitalized", ylab = "Previous Travel History") +
+  abline(Monkey_Pox.regression, col = "red") #regression line
+
+#statistics test
+
+#first need to create a sum of cases column in monkey_pox_gender dataset
+
+monkey_pox_gender$total_cases = rowSums(monkey_pox_gender[,c("Another sex/gender", "Men", "Transgender men", "Transgender women", "Women")])
+
+#need to group rows now to do anova
+
+monkey_pox_gender <- monkey_pox_gender %>% mutate(AgeGroup = case_when(web_age_grp %in% c("0 to 5", "6 to 10", "11 to 15", "16 to 20") ~ "0-20",
+                                                                       web_age_grp %in% c("21 to 25", "26 to 30", "31 to 35", "36 to 40") ~ "21-40",
+                                                                       web_age_grp %in% c("41 to 45", "46 to 50", "51 to 55", "56 to 60") ~ "41-60",
+                                                                       TRUE ~ ">60"))
+
+
+monkey_pox_gender_GroupedByAgeGroup <- monkey_pox_gender %>% group_by(AgeGroup) %>% summarize(Men = sum(Men),
+                                                                                              Women = sum(Women),
+                                                                                              `Transgender Men` = sum(`Transgender men`),
+                                                                                              `Transgender Women` = sum(`Transgender women`),
+                                                                                              `Another Gender` = sum(`Another sex/gender`)
+                                                                                              )
+
+monkey_pox_gender_GroupedByAgeGroup$total_cases = rowSums(monkey_pox_gender_GroupedByAgeGroup[,c("Another Gender", "Men", "Transgender Men", "Transgender Women", "Women")])
+
+#we can see from this chart that people aged 21-40 are most likely to contract monkeypox based on total case counts. We can also see that men make up the very large majority of cases. 
+
+#now do anova
+
+
+Anova_Results <- aov(Confirmed_Cases ~ Gender, data = Monkey_Pox)
+
+#now summarize to get results
+summary(Anova_Results)
+#with a p value this high, there would be very little differentiation of means and thus gender is not a statistically significant variable for case count. We know this is not true, however, because in the other dataset(Monkey pox gender) we can see that the vast majority of confirmed cases were still male. 
+```
+
